@@ -1,7 +1,15 @@
 import streamlit as st
-import joblib
+import pandas as pd
 import os
 
+try:
+    import joblib
+except ImportError:
+    st.error(
+        "joblib is not installed. "
+        "Please make sure requirements.txt contains 'joblib>=1.3.2'."
+    )
+    st.stop()
 # =====================================
 # Page Configuration
 # =====================================
