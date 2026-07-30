@@ -1,150 +1,131 @@
 import streamlit as st
-import matplotlib.pyplot as plt
-from PIL import Image
-from predict import predict_image
+import joblib
+import os
 
-# -----------------------------
+# =====================================
 # Page Configuration
-# -----------------------------
+# =====================================
 st.set_page_config(
-    page_title="AI Image Recognition",
-    page_icon="🧠",
-    layout="wide"
+    page_title="Movie Review Sentiment Analysis",
+    page_icon="🎬",
+    layout="centered"
 )
 
-# -----------------------------
-# Custom CSS
-# -----------------------------
-st.markdown("""
-<style>
-.main{
-    background-color:#f5f7fa;
-}
-.title{
-    text-align:center;
-    color:#0066cc;
-}
-.subtitle{
-    text-align:center;
-    color:gray;
-}
-.result{
-    padding:15px;
-    border-radius:10px;
-    background:#ffffff;
-}
-</style>
-""", unsafe_allow_html=True)
+# =====================================
+# Load Model
+# =====================================
+import os
 
-# -----------------------------
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+MODEL_PATH = os.path.join(BASE_DIR, "models", "sentiment_model.pkl")
+VECTORIZER_PATH = os.path.join(BASE_DIR, "models", "vectorizer.pkl")
+
+if not os.path.exists(MODEL_PATH) or not os.path.exists(VECTORIZER_PATH):
+    st.error("❌ Model files not found!")
+
+    st.info(
+        """
+Please train the model first.
+
+Open your terminal and run:
+
+python train.py
+
+After training, run:
+
+streamlit run app.py
+"""
+    )
+    st.stop()
+
+model = joblib.load(MODEL_PATH)
+vectorizer = joblib.load(VECTORIZER_PATH)
+
+# =====================================
 # Header
-# -----------------------------
-st.markdown("<h1 class='title'>🧠 AI Image Recognition</h1>", unsafe_allow_html=True)
+# =====================================
+st.title("🎬 Movie Review Sentiment Analysis")
 
-st.markdown(
-"<p class='subtitle'>Upload an image and MobileNetV2 will identify the object.</p>",
-unsafe_allow_html=True
+st.write(
+    """
+Predict whether a movie review is **Positive 😊** or **Negative 😞**
+using Machine Learning (TF-IDF + Logistic Regression).
+"""
 )
 
-st.write("---")
+# =====================================
+# Input
+# =====================================
+review = st.text_area(
+    "Enter your movie review:",
+    placeholder="Example: The movie was absolutely fantastic!",
+    height=180,
+)
 
-# -----------------------------
+# =====================================
+# Predict
+# =====================================
+if st.button("Predict"):
+
+    if review.strip() == "":
+        st.warning("Please enter a review.")
+    else:
+
+        review_vector = vectorizer.transform([review])
+
+        prediction = model.predict(review_vector)[0]
+
+        confidence = model.predict_proba(review_vector).max()
+
+        if prediction == 1:
+            st.success("😊 Positive Review")
+            st.balloons()
+        else:
+            st.error("😞 Negative Review")
+
+        st.subheader("Confidence")
+
+        st.progress(float(confidence))
+
+        st.write(f"**{confidence*100:.2f}%**")
+
+# =====================================
+# Examples
+# =====================================
+st.markdown("---")
+
+st.subheader("Try these examples")
+
+examples = [
+    "The movie was absolutely fantastic.",
+    "I loved the acting and storyline.",
+    "The film was boring and a waste of time.",
+    "The direction was amazing.",
+    "Worst movie I have ever watched."
+]
+
+for ex in examples:
+    st.code(ex)
+
+# =====================================
 # Sidebar
-# -----------------------------
-st.sidebar.title("About")
+# =====================================
+st.sidebar.title("About Project")
 
-st.sidebar.info(
-"""
-This project uses
+st.sidebar.write("""
+### Technologies
 
-• TensorFlow
+- Python
+- Streamlit
+- Scikit-Learn
+- TF-IDF
+- Logistic Regression
+- Joblib
 
-• MobileNetV2
+### Developer
 
-• ImageNet Dataset
+Movie Review Sentiment Analysis
 
-• Streamlit
-
-Built for GitHub Portfolio.
-"""
-)
-
-# -----------------------------
-# Upload Image
-# -----------------------------
-uploaded_file = st.file_uploader(
-    "📤 Upload Image",
-    type=["jpg","jpeg","png"]
-)
-
-if uploaded_file is not None:
-
-    image = Image.open(uploaded_file)
-
-    col1, col2 = st.columns([1,1])
-
-    with col1:
-
-        st.image(
-            image,
-            caption="Uploaded Image",
-            use_container_width=True
-        )
-
-    with col2:
-
-        with st.spinner("Analyzing Image..."):
-
-            predictions = predict_image(uploaded_file)
-
-        st.success("Prediction Completed Successfully!")
-
-        labels = []
-        scores = []
-
-        st.subheader("Top 5 Predictions")
-
-        for _, label, probability in predictions:
-
-            labels.append(label)
-
-            scores.append(probability * 100)
-
-            st.write(
-                f"✅ **{label}** : {probability*100:.2f}%"
-            )
-
-        st.write("")
-
-        fig, ax = plt.subplots(figsize=(8,4))
-
-        ax.barh(labels, scores)
-
-        ax.set_xlabel("Confidence (%)")
-
-        ax.set_title("Prediction Confidence")
-
-        ax.invert_yaxis()
-
-        st.pyplot(fig)
-
-        best = predictions[0]
-
-        st.success(
-            f"🏆 Best Prediction: **{best[1]}** ({best[2]*100:.2f}%)"
-        )
-
-else:
-
-    st.info("👆 Upload an image to begin.")
-
-# -----------------------------
-# Footer
-# -----------------------------
-st.write("---")
-
-st.markdown(
-"""
-Made with ❤️ using **TensorFlow**, **MobileNetV2**, and **Streamlit**.
-"""
-)
+Machine Learning Project
+""")
